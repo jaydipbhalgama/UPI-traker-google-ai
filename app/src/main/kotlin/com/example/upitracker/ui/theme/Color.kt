@@ -5,73 +5,77 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
 
-// ─── Theme Colors ────────────────────────────────────────────────────────────
+// ─── Fintech Color System ("Ledger Mint & Obsidian Slate") ───────────────────
 
 // Light Theme Palette
-val primaryLight = Color(0xFF0072B2)
+val primaryLight = Color(0xFF0B6E4F)
 val onPrimaryLight = Color(0xFFFFFFFF)
-val primaryContainerLight = Color(0xFFD6EBFA)
-val onPrimaryContainerLight = Color(0xFF00344F)
-val backgroundLight = Color(0xFFFAFCFE)
-val onBackgroundLight = Color(0xFF101418)
-val surfaceLight = Color(0xFFFAFCFE)
-val onSurfaceLight = Color(0xFF101418)
-val errorLight = Color(0xFFB3261E)
+val primaryContainerLight = Color(0xFFD5F5E6)
+val onPrimaryContainerLight = Color(0xFF053323)
+
+val backgroundLight = Color(0xFFF5F7FA)
+val onBackgroundLight = Color(0xFF0F172A)
+val surfaceLight = Color(0xFFFFFFFF)
+val onSurfaceLight = Color(0xFF0F172A)
+
+val errorLight = Color(0xFFB91C1C)
 val onErrorLight = Color(0xFFFFFFFF)
-val errorContainerLight = Color(0xFFF9DEDC)
-val onErrorContainerLight = Color(0xFF410E0B)
+val errorContainerLight = Color(0xFFFEE2E2)
+val onErrorContainerLight = Color(0xFF5C0B0B)
 
-val secondaryLight = Color(0xFF486271)
+val secondaryLight = Color(0xFF1E3A5F)
 val onSecondaryLight = Color(0xFFFFFFFF)
-val secondaryContainerLight = Color(0xFFD3E4F5)
-val onSecondaryContainerLight = Color(0xFF0C1D29)
+val secondaryContainerLight = Color(0xFFE2ECF7)
+val onSecondaryContainerLight = Color(0xFF10243D)
 
-val tertiaryLight = Color(0xFF6B5778)
+val tertiaryLight = Color(0xFF5B4B8A)
 val onTertiaryLight = Color(0xFFFFFFFF)
-val tertiaryContainerLight = Color(0xFFF2DAFF)
-val onTertiaryContainerLight = Color(0xFF251431)
+val tertiaryContainerLight = Color(0xFFEDE8FA)
+val onTertiaryContainerLight = Color(0xFF231942)
 
-val surfaceVariantLight = Color(0xFFEEF2F6)
-val onSurfaceVariantLight = Color(0xFF42474E)
-val outlineLight = Color(0xFF72777F)
-val outlineVariantLight = Color(0xFFC2C7CF)
+val surfaceVariantLight = Color(0xFFEDF2F7)
+val onSurfaceVariantLight = Color(0xFF475569)
+val outlineLight = Color(0xFF64748B)
+val outlineVariantLight = Color(0xFFDCE3EC)
 
 // Dark Theme Palette
-val primaryDark = Color(0xFF5DADE2)
-val onPrimaryDark = Color(0xFF00334D)
-val primaryContainerDark = Color(0xFF004A73)
-val onPrimaryContainerDark = Color(0xFFD6EBFA)
-val backgroundDark = Color(0xFF101418)
-val onBackgroundDark = Color(0xFFE1E2E8)
-val surfaceDark = Color(0xFF101418)
-val onSurfaceDark = Color(0xFFE1E2E8)
-val errorDark = Color(0xFFF2B8B5)
-val onErrorDark = Color(0xFF601410)
-val errorContainerDark = Color(0xFF8C1D18)
-val onErrorContainerDark = Color(0xFFF9DEDC)
+val primaryDark = Color(0xFF4ADEA0)
+val onPrimaryDark = Color(0xFF042F1E)
+val primaryContainerDark = Color(0xFF0F4C37)
+val onPrimaryContainerDark = Color(0xFFC6FCE3)
 
-val secondaryDark = Color(0xFFB7C8D9)
-val onSecondaryDark = Color(0xFF21323F)
-val secondaryContainerDark = Color(0xFF384956)
-val onSecondaryContainerDark = Color(0xFFD3E4F5)
+val backgroundDark = Color(0xFF0B0F14)
+val onBackgroundDark = Color(0xFFF1F5F9)
+val surfaceDark = Color(0xFF131A23)
+val onSurfaceDark = Color(0xFFF1F5F9)
 
-val tertiaryDark = Color(0xFFD6BEE4)
-val onTertiaryDark = Color(0xFF3B2A47)
-val tertiaryContainerDark = Color(0xFF52405F)
-val onTertiaryContainerDark = Color(0xFFF2DAFF)
+val errorDark = Color(0xFFF87171)
+val onErrorDark = Color(0xFF450A0A)
+val errorContainerDark = Color(0xFF4C1518)
+val onErrorContainerDark = Color(0xFFFEE2E2)
 
-val surfaceVariantDark = Color(0xFF1C2128)
-val onSurfaceVariantDark = Color(0xFFC2C7CF)
-val outlineDark = Color(0xFF8C9199)
-val outlineVariantDark = Color(0xFF42474E)
+val secondaryDark = Color(0xFF93C5FD)
+val onSecondaryDark = Color(0xFF0D2847)
+val secondaryContainerDark = Color(0xFF1D334D)
+val onSecondaryContainerDark = Color(0xFFDBEAFE)
 
-// Credit amount text (always paired with a Debit/Credit or Spent/Received label)
-val CreditColorLight = Color(0xFF137333)
-val CreditColorDark = Color(0xFF48C9B0)
-val DebitColor = Color(0xFFC62828)
+val tertiaryDark = Color(0xFFC4B5FD)
+val onTertiaryDark = Color(0xFF281B4F)
+val tertiaryContainerDark = Color(0xFF3A2D63)
+val onTertiaryContainerDark = Color(0xFFEDE9FE)
 
-val NearLimitLight = Color(0xFFE69F00)
-val NearLimitDark = Color(0xFFF5B041)
+val surfaceVariantDark = Color(0xFF1C2532)
+val onSurfaceVariantDark = Color(0xFF94A3B8)
+val outlineDark = Color(0xFF64748B)
+val outlineVariantDark = Color(0xFF283445)
+
+// Semantic Transaction & Budget Status Colors
+val CreditColorLight = Color(0xFF0B6E43)
+val CreditColorDark = Color(0xFF34D399)
+val DebitColor = Color(0xFFB91C1C)
+
+val NearLimitLight = Color(0xFFB45309)
+val NearLimitDark = Color(0xFFFBBF24)
 
 // ─── WCAG Contrast Calculation ───────────────────────────────────────────────
 

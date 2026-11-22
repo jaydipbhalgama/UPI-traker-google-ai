@@ -7,6 +7,7 @@ import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.unit.dp
 
 private val DarkColorScheme = darkColorScheme(
     primary = primaryDark,
@@ -63,14 +64,16 @@ private val LightColorScheme = lightColorScheme(
 )
 
 private val AppShapes = Shapes(
-    small = RoundedCornerShape(Dimens.space8),
+    extraSmall = RoundedCornerShape(8.dp),
+    small = RoundedCornerShape(12.dp),
     medium = RoundedCornerShape(Dimens.cardCornerRadius),
-    large = RoundedCornerShape(Dimens.space16)
+    large = RoundedCornerShape(22.dp),
+    extraLarge = RoundedCornerShape(28.dp)
 )
 
 /**
- * Static Material 3 theme for UPI Tracker (NO dynamic colors).
- * Respects system light / dark setting.
+ * Material 3 theme for UPI Tracker with bespoke fintech palette,
+ * Plus Jakarta Sans & JetBrains Mono typography, and full Light/Dark support.
  */
 @Composable
 fun UPITrackerTheme(

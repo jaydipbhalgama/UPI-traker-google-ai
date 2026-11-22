@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -17,17 +18,23 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -44,8 +51,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
 import com.example.upitracker.MonthSelector
 import com.example.upitracker.data.category.Category
 import com.example.upitracker.data.local.entity.Budget
@@ -54,9 +64,14 @@ import com.example.upitracker.domain.budget.BudgetLogic
 import com.example.upitracker.domain.budget.MAX_BUDGET_PAISE
 import com.example.upitracker.ui.components.AppCard
 import com.example.upitracker.ui.components.CategoryColorDot
+import com.example.upitracker.ui.components.CategoryIconBadge
+import com.example.upitracker.ui.components.EmptyState
+import com.example.upitracker.ui.components.SectionHeader
+import com.example.upitracker.ui.components.StatusPill
 import com.example.upitracker.ui.components.ThemedLinearProgress
 import com.example.upitracker.ui.components.budgetLevelColor
 import com.example.upitracker.ui.theme.Dimens
+import com.example.upitracker.ui.theme.MoneyTypography
 import com.example.upitracker.util.CurrencyUtils
 import java.time.LocalDate
 import java.time.YearMonth
@@ -89,9 +104,8 @@ fun BudgetsScreen(
             LazyColumn(
                 modifier = modifier.fillMaxSize(),
                 contentPadding = PaddingValues(Dimens.screenPadding),
-                verticalArrangement = Arrangement.spacedBy(Dimens.dp24)
+                verticalArrangement = Arrangement.spacedBy(Dimens.dp16)
             ) {
-                // 1. Month selector
                 item {
                     MonthSelector(
                         selectedMonth = uiState.month,
@@ -102,19 +116,32 @@ fun BudgetsScreen(
                     )
                 }
 
-                // Subtitle
                 item {
-                    Text(
-                        text = "Limits repeat every month",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.padding(horizontal = 4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Text(
+                            text = "Monthly spending limits renew automatically each month.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
 
-                // 2. Notification permission hint if needed
                 if (uiState.showNotificationHint) {
                     item {
-                        AppCard(containerColor = MaterialTheme.colorScheme.tertiaryContainer) {
+                        AppCard(
+                            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                            borderColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.25f)
+                        ) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -123,28 +150,35 @@ fun BudgetsScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Info,
+                                    imageVector = Icons.Default.Notifications,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onTertiaryContainer
                                 )
-                                Spacer(Modifier.width(Dimens.dp8))
+                                Spacer(Modifier.width(Dimens.dp12))
                                 Text(
-                                    text = "Turn on notifications to get budget alerts",
-                                    style = MaterialTheme.typography.bodyLarge,
+                                    text = "Turn on notifications to receive 80% and 100% budget alerts.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
                                     modifier = Modifier.weight(1f)
                                 )
                                 Spacer(Modifier.width(Dimens.dp8))
-                                Button(onClick = onNotificationSettingsClick) {
-                                    Text("Turn on")
+                                Button(
+                                    onClick = onNotificationSettingsClick,
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier.defaultMinSize(minHeight = Dimens.minTouchTarget)
+                                ) {
+                                    Text("Enable")
                                 }
                             }
                         }
                     }
                 }
 
-                // 3. Overall budget card
+                // Overall Monthly Budget Spotlight Card
                 item {
-                    AppCard(containerColor = MaterialTheme.colorScheme.surfaceVariant) {
+                    AppCard(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ) {
                         Column(modifier = Modifier.padding(Dimens.cardPadding)) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -152,18 +186,28 @@ fun BudgetsScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "Overall monthly budget",
-                                    style = MaterialTheme.typography.titleMedium
+                                    text = "Overall Monthly Budget",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
                                 )
                                 if (uiState.overall != null) {
-                                    TextButton(onClick = {
-                                        editingBudget = BudgetSheetTarget.Edit(
-                                            budgetKey = Budget.TOTAL_BUDGET_KEY,
-                                            label = "Overall",
-                                            emoji = "",
-                                            currentLimitPaise = uiState.overall.status.limitPaise
+                                    TextButton(
+                                        onClick = {
+                                            editingBudget = BudgetSheetTarget.Edit(
+                                                budgetKey = Budget.TOTAL_BUDGET_KEY,
+                                                label = "Overall",
+                                                emoji = "",
+                                                currentLimitPaise = uiState.overall.status.limitPaise
+                                            )
+                                        },
+                                        modifier = Modifier.defaultMinSize(minHeight = Dimens.minTouchTarget)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Edit,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
                                         )
-                                    }) {
+                                        Spacer(Modifier.width(4.dp))
                                         Text("Edit")
                                     }
                                 }
@@ -175,6 +219,7 @@ fun BudgetsScreen(
                                 BudgetRowContent(
                                     row = uiState.overall,
                                     isCurrentMonth = uiState.month == YearMonth.from(LocalDate.now()),
+                                    isOverallHero = true,
                                     onClick = {
                                         editingBudget = BudgetSheetTarget.Edit(
                                             budgetKey = Budget.TOTAL_BUDGET_KEY,
@@ -190,14 +235,24 @@ fun BudgetsScreen(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text(
-                                        text = "No overall budget set",
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Button(onClick = {
-                                        editingBudget = BudgetSheetTarget.AddOverall
-                                    }) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "No overall limit set",
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        Text(
+                                            text = "Track total monthly UPI spend against a target cap.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    Spacer(Modifier.width(Dimens.dp12))
+                                    Button(
+                                        onClick = { editingBudget = BudgetSheetTarget.AddOverall },
+                                        shape = RoundedCornerShape(14.dp),
+                                        modifier = Modifier.defaultMinSize(minHeight = Dimens.minTouchTarget)
+                                    ) {
                                         Text("Set budget")
                                     }
                                 }
@@ -206,50 +261,41 @@ fun BudgetsScreen(
                     }
                 }
 
-                // 4. Category budgets section
+                // Category Budgets Header
                 item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Category budgets",
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        OutlinedButton(onClick = {
-                            val existingKeys = uiState.allBudgets.map { it.budgetKey }.toSet()
-                            val availableCats = Category.entries.filter {
-                                it != Category.INCOME && it != Category.UNCATEGORIZED && it.label !in existingKeys
+                    SectionHeader(
+                        title = "Category Budgets",
+                        action = {
+                            OutlinedButton(
+                                onClick = {
+                                    val existingKeys = uiState.allBudgets.map { it.budgetKey }.toSet()
+                                    val availableCats = Category.entries.filter {
+                                        it != Category.INCOME && it != Category.UNCATEGORIZED && it.label !in existingKeys
+                                    }
+                                    editingBudget = BudgetSheetTarget.AddCategory(availableCats)
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.defaultMinSize(minHeight = Dimens.minTouchTarget)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(Modifier.width(Dimens.dp4))
+                                Text("Add limit")
                             }
-                            editingBudget = BudgetSheetTarget.AddCategory(availableCats)
-                        }) {
-                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(Dimens.dp16))
-                            Spacer(Modifier.width(Dimens.dp4))
-                            Text("Add")
                         }
-                    }
+                    )
                 }
 
                 if (uiState.categoryRows.isEmpty()) {
                     item {
-                        AppCard(
-                            modifier = Modifier.fillMaxWidth(),
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(Dimens.dp24),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "No category budgets set",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
+                        EmptyState(
+                            icon = Icons.Default.Star,
+                            title = "No category budgets yet",
+                            hint = "Create limits for Dining, Groceries, Shopping, or Travel to stay ahead of overspending."
+                        )
                     }
                 } else {
                     items(uiState.categoryRows, key = { it.budgetKey }) { row ->
@@ -258,6 +304,7 @@ fun BudgetsScreen(
                                 BudgetRowContent(
                                     row = row,
                                     isCurrentMonth = uiState.month == YearMonth.from(LocalDate.now()),
+                                    isOverallHero = false,
                                     onClick = {
                                         editingBudget = BudgetSheetTarget.Edit(
                                             budgetKey = row.budgetKey,
@@ -275,7 +322,6 @@ fun BudgetsScreen(
         }
     }
 
-    // Modal Bottom Sheet for Add/Edit
     editingBudget?.let { target ->
         BudgetEditBottomSheet(
             target = target,
@@ -297,7 +343,8 @@ fun BudgetRowContent(
     row: BudgetRowUi,
     isCurrentMonth: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isOverallHero: Boolean = false
 ) {
     val status = row.status
     val levelColor = budgetLevelColor(status.level)
@@ -312,10 +359,13 @@ fun BudgetRowContent(
         BudgetLevel.OVER -> "Over budget"
     }
     val category = Category.fromLabel(row.label)
+    val isOverall = row.budgetKey == Budget.TOTAL_BUDGET_KEY
 
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .defaultMinSize(minHeight = Dimens.minTouchTarget)
+            .clip(RoundedCornerShape(12.dp))
             .clickable(onClick = onClick)
     ) {
         Row(
@@ -324,20 +374,38 @@ fun BudgetRowContent(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                if (row.budgetKey != Budget.TOTAL_BUDGET_KEY) {
-                    CategoryColorDot(category)
-                    Spacer(Modifier.width(Dimens.dp8))
+                if (!isOverall) {
+                    CategoryIconBadge(
+                        category = category,
+                        size = 36.dp,
+                        iconSize = 18.dp
+                    )
+                    Spacer(Modifier.width(Dimens.dp12))
                 }
-                Text(row.label, style = MaterialTheme.typography.titleMedium)
+                Column {
+                    if (!isOverall) {
+                        Text(
+                            row.label,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Text(
+                        text = "${CurrencyUtils.formatRupees(status.spentPaise)} of ${CurrencyUtils.formatRupees(status.limitPaise)}",
+                        style = if (isOverallHero) MoneyTypography.cardAmount else MaterialTheme.typography.bodySmall,
+                        color = if (isOverallHero) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
-            Text(
-                text = "${CurrencyUtils.formatRupees(status.spentPaise)} of ${CurrencyUtils.formatRupees(status.limitPaise)} used",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+
+            StatusPill(
+                label = statusWord,
+                icon = statusIcon,
+                color = levelColor
             )
         }
 
-        Spacer(Modifier.height(Dimens.dp8))
+        Spacer(Modifier.height(Dimens.dp12))
 
         val fraction = if (status.limitPaise > 0L) {
             (status.spentPaise.toFloat() / status.limitPaise.toFloat()).coerceIn(0f, 1f)
@@ -351,47 +419,27 @@ fun BudgetRowContent(
 
         Spacer(Modifier.height(Dimens.dp8))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = statusIcon,
-                    contentDescription = statusWord,
-                    tint = levelColor,
-                    modifier = Modifier.size(Dimens.dp16)
-                )
-                Spacer(Modifier.width(Dimens.dp4))
-                Text(
-                    text = statusWord,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = levelColor
-                )
-            }
-
-            val subText = if (isCurrentMonth) {
-                if (status.remainingPaise >= 0L) {
-                    val perDay = status.perDayLeftPaise?.let { " • ${CurrencyUtils.formatRupees(it)}/day for ${status.daysLeft} days" } ?: ""
-                    "${CurrencyUtils.formatRupees(status.remainingPaise)} left$perDay"
-                } else {
-                    "Over by ${CurrencyUtils.formatRupees(-status.remainingPaise)}"
-                }
+        val subText = if (isCurrentMonth) {
+            if (status.remainingPaise >= 0L) {
+                val perDay = status.perDayLeftPaise?.let { " • ${CurrencyUtils.formatRupees(it)}/day for ${status.daysLeft}d" } ?: ""
+                "${CurrencyUtils.formatRupees(status.remainingPaise)} remaining$perDay"
             } else {
-                if (status.remainingPaise >= 0L) {
-                    "${CurrencyUtils.formatRupees(status.remainingPaise)} left"
-                } else {
-                    "Over by ${CurrencyUtils.formatRupees(-status.remainingPaise)}"
-                }
+                "Over budget by ${CurrencyUtils.formatRupees(-status.remainingPaise)}"
             }
-
-            Text(
-                text = subText,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+        } else {
+            if (status.remainingPaise >= 0L) {
+                "${CurrencyUtils.formatRupees(status.remainingPaise)} remaining"
+            } else {
+                "Over budget by ${CurrencyUtils.formatRupees(-status.remainingPaise)}"
+            }
         }
+
+        Text(
+            text = subText,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Medium,
+            color = if (status.remainingPaise < 0L) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
@@ -453,9 +501,9 @@ fun BudgetEditBottomSheet(
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
             )
 
-            // Category selector when adding category budget
             if (target is BudgetSheetTarget.AddCategory) {
                 if (target.availableCategories.isEmpty()) {
                     Text(
@@ -466,7 +514,7 @@ fun BudgetEditBottomSheet(
                 } else {
                     Text(
                         text = "Choose category",
-                        style = MaterialTheme.typography.labelMedium,
+                        style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     FlowRow(
@@ -477,14 +525,20 @@ fun BudgetEditBottomSheet(
                             FilterChip(
                                 selected = selectedCategory == cat,
                                 onClick = { selectedCategory = cat },
-                                label = { Text(cat.label) }
+                                leadingIcon = { CategoryColorDot(cat) },
+                                label = { Text(cat.label) },
+                                shape = RoundedCornerShape(999.dp),
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                ),
+                                modifier = Modifier.defaultMinSize(minHeight = Dimens.minTouchTarget)
                             )
                         }
                     }
                 }
             }
 
-            // Amount TextField
             OutlinedTextField(
                 value = amountText,
                 onValueChange = { amountText = it },
@@ -493,6 +547,7 @@ fun BudgetEditBottomSheet(
                 placeholder = { Text("e.g. 5000") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 singleLine = true,
+                shape = RoundedCornerShape(14.dp),
                 isError = amountText.isNotBlank() && !isValid,
                 supportingText = {
                     if (parsedPaise != null && isValid) {
@@ -515,7 +570,8 @@ fun BudgetEditBottomSheet(
                 if (isEditing) {
                     TextButton(
                         onClick = { showDeleteConfirm = true },
-                        colors = androidx.compose.material3.ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                        modifier = Modifier.defaultMinSize(minHeight = Dimens.minTouchTarget)
                     ) {
                         Text("Delete")
                     }
@@ -524,7 +580,11 @@ fun BudgetEditBottomSheet(
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(Dimens.dp8)) {
-                    OutlinedButton(onClick = onDismiss) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.defaultMinSize(minHeight = Dimens.minTouchTarget)
+                    ) {
                         Text("Cancel")
                     }
                     Button(
@@ -538,7 +598,9 @@ fun BudgetEditBottomSheet(
                                 onSave(key, parsedPaise)
                             }
                         },
-                        enabled = isValid && (target !is BudgetSheetTarget.AddCategory || selectedCategory != null)
+                        enabled = isValid && (target !is BudgetSheetTarget.AddCategory || selectedCategory != null),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.defaultMinSize(minHeight = Dimens.minTouchTarget)
                     ) {
                         Text("Save")
                     }
@@ -558,7 +620,7 @@ fun BudgetEditBottomSheet(
                         showDeleteConfirm = false
                         onDelete(target.budgetKey)
                     },
-                    colors = androidx.compose.material3.ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                 ) {
                     Text("Delete")
                 }

@@ -11,6 +11,8 @@ import com.example.upitracker.data.local.entity.TransactionType
 import com.example.upitracker.data.repository.TransactionRepository
 import com.example.upitracker.data.sms.SmsSyncManager
 import com.example.upitracker.domain.MonthSelection
+import com.example.upitracker.domain.summary.MonthlySummary
+import com.example.upitracker.domain.summary.MonthlySummaryCalculator
 import com.example.upitracker.util.DateTimeUtils
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -22,6 +24,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.YearMonth
@@ -62,7 +65,8 @@ sealed interface DashboardUiState {
         val canGoNext: Boolean,
         val canGoPrevious: Boolean,
         val allMonthTransactions: List<Transaction>,
-        val budgetSummary: DashboardBudgetSummary = DashboardBudgetSummary()
+        val budgetSummary: DashboardBudgetSummary = DashboardBudgetSummary(),
+        val currentMonthSummary: MonthlySummary = MonthlySummary(month = YearMonth.now())
     ) : DashboardUiState
 }
 
@@ -93,6 +97,14 @@ class DashboardViewModel(
     /** Count of matching transactions for the merchant key in the edit sheet */
     private val _merchantCount = MutableStateFlow(0)
     val merchantCount: StateFlow<Int> = _merchantCount.asStateFlow()
+
+    private val currentMonthSummaryFlow = run {
+        val currentMonth = YearMonth.now()
+        val currentStart = DateTimeUtils.monthStartMillis(currentMonth)
+        val currentEnd = DateTimeUtils.monthEndExclusiveMillis(currentMonth)
+        repository.getTransactionsBetween(currentStart, currentEnd)
+            .map { txs -> MonthlySummaryCalculator.calculate(txs, currentMonth) }
+    }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val uiState: StateFlow<DashboardUiState> = monthSelection.selectedMonth
@@ -188,6 +200,8 @@ class DashboardViewModel(
                     allMonthTransactions = monthTxs,
                     budgetSummary = budgetSummary
                 )
+            }.combine(currentMonthSummaryFlow) { baseState, currentMonthSummary ->
+                baseState.copy(currentMonthSummary = currentMonthSummary)
             }
         }
         .stateIn(
@@ -273,6 +287,33 @@ class DashboardViewModel(
 
     suspend fun getAllTransactionsForExport(): List<Transaction> {
         return repository.getAllOnce()
+    }
+
+    fun addManualTransaction(
+        amountPaise: Long,
+        type: TransactionType,
+        merchant: String,
+        category: Category,
+        note: String?
+    ) {
+        viewModelScope.launch {
+            val tx = Transaction(
+                amountPaise = amountPaise,
+                type = type,
+                merchant = merchant.trim(),
+                category = category.label,
+                timestamp = System.currentTimeMillis(),
+                bankName = "Manual",
+                balanceAfterPaise = null,
+                smsHash = "manual_${UUID.randomUUID()}",
+                note = note?.trim()?.takeIf { it.isNotEmpty() }
+            )
+            repository.insert(tx)
+            alertChecker.check()
+            _snackbarMessage.emit(
+                if (type == TransactionType.DEBIT) "Expense added" else "Income added"
+            )
+        }
     }
 
     fun addSampleTransaction() {

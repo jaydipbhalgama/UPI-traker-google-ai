@@ -103,8 +103,9 @@ class BudgetAlertChecker(
             }
         }
 
-        // Update markers in SharedPreferences
+        // Update markers in SharedPreferences, preserving already-notified markers for the current month
         val updatedSet = HashSet(storedSet.filter { !it.startsWith(currentMonthPrefix) })
+        updatedSet.addAll(alreadyNotified)
         updatedSet.addAll(decision.toMark)
         prefs.edit().putStringSet(KEY_NOTIFIED_MARKERS, updatedSet).apply()
     }
@@ -158,16 +159,6 @@ class BudgetAlertChecker(
         val storedSet = prefs.getStringSet(KEY_NOTIFIED_MARKERS, emptySet()) ?: emptySet()
         val cleanedSet = storedSet.filterNot { it.contains(markerPart) }.toSet()
         prefs.edit().putStringSet(KEY_NOTIFIED_MARKERS, HashSet(cleanedSet)).apply()
-    }
-
-    /**
-     * Posts a sample notification for debug testing.
-     */
-    fun postTestAlert() {
-        if (!hasNotificationPermission()) return
-        val notificationManager = NotificationManagerCompat.from(context)
-        if (!notificationManager.areNotificationsEnabled()) return
-        showNotification(notificationManager, Budget.TOTAL_BUDGET_KEY, 80)
     }
 
     private fun showNotification(

@@ -7,6 +7,8 @@ import com.example.upitracker.data.local.entity.Transaction
 import com.example.upitracker.data.local.entity.TransactionType
 import com.example.upitracker.data.repository.TransactionRepository
 import com.example.upitracker.domain.MonthSelection
+import com.example.upitracker.domain.summary.MonthlySummary
+import com.example.upitracker.domain.summary.MonthlySummaryCalculator
 import com.example.upitracker.ui.dashboard.DashboardCalculator
 import com.example.upitracker.util.DateTimeUtils
 import kotlinx.coroutines.Dispatchers
@@ -16,6 +18,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import java.time.Instant
 import java.time.LocalDate
@@ -37,7 +40,8 @@ sealed interface InsightsUiState {
         val visibleDays: Int,
         val highestDay: Int?,
         val averageDailyPaise: Long,
-        val monthly: List<MonthTotals>
+        val monthly: List<MonthTotals>,
+        val currentMonthSummary: MonthlySummary = MonthlySummary(month = YearMonth.now())
     ) : InsightsUiState
 }
 
@@ -48,6 +52,14 @@ class InsightsViewModel(
 ) : ViewModel() {
 
     val selectedMonth: StateFlow<YearMonth> = monthSelection.selectedMonth
+
+    private val currentMonthSummaryFlow = run {
+        val currentMonth = YearMonth.now(zoneId)
+        val currentStart = DateTimeUtils.monthStartMillis(currentMonth, zoneId)
+        val currentEnd = DateTimeUtils.monthEndExclusiveMillis(currentMonth, zoneId)
+        repository.getTransactionsBetween(currentStart, currentEnd)
+            .map { txs -> MonthlySummaryCalculator.calculate(txs, currentMonth, zoneId) }
+    }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val uiState: StateFlow<InsightsUiState> = monthSelection.selectedMonth
@@ -117,6 +129,11 @@ class InsightsViewModel(
                     averageDailyPaise = summary.averageDailySpendPaise,
                     monthly = monthly
                 )
+            }.combine(currentMonthSummaryFlow) { baseState, currentMonthSummary ->
+                when (baseState) {
+                    is InsightsUiState.Success -> baseState.copy(currentMonthSummary = currentMonthSummary)
+                    else -> baseState
+                }
             }.flowOn(Dispatchers.Default)
         }
         .stateIn(

@@ -1,5 +1,8 @@
 package com.example.upitracker.ui.insights
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -11,6 +14,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,27 +23,36 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryTabRow
-import androidx.compose.material3.Tab
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -47,12 +60,24 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.upitracker.MonthSelector
 import com.example.upitracker.data.category.Category
+import com.example.upitracker.ui.components.AppCard
+import com.example.upitracker.ui.components.CategoryIconBadge
+import com.example.upitracker.ui.components.EmptyState
+import com.example.upitracker.ui.components.LegendSwatch
+import com.example.upitracker.ui.components.MonthlySummaryChartCard
+import com.example.upitracker.ui.components.StatusPill
+import com.example.upitracker.ui.components.creditAmountColor
+import com.example.upitracker.ui.theme.Dimens
+import com.example.upitracker.ui.theme.MoneyTypography
+import com.example.upitracker.ui.theme.NearLimitDark
+import com.example.upitracker.ui.theme.NearLimitLight
 import com.example.upitracker.util.CurrencyUtils
 import com.example.upitracker.util.DateTimeUtils
+import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -72,11 +97,16 @@ fun InsightsScreen(
             }
         }
         is InsightsUiState.Empty -> {
-            Box(modifier = modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
-                com.example.upitracker.ui.components.EmptyState(
-                    emoji = "📊",
-                    title = "No transactions found",
-                    hint = "Import your SMS messages or add transactions to view spending insights and charts."
+            Box(
+                modifier = modifier
+                    .fillMaxSize()
+                    .padding(Dimens.dp24),
+                contentAlignment = Alignment.Center
+            ) {
+                EmptyState(
+                    icon = Icons.Default.DateRange,
+                    title = "No insights yet",
+                    hint = "Sync bank SMS or log a transaction to unlock category breakdowns, daily trends, and monthly comparisons."
                 )
             }
         }
@@ -107,10 +137,14 @@ fun InsightsContent(
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        contentPadding = PaddingValues(
+            start = Dimens.screenPadding,
+            end = Dimens.screenPadding,
+            top = Dimens.screenPadding,
+            bottom = Dimens.dp24
+        ),
+        verticalArrangement = Arrangement.spacedBy(Dimens.dp16)
     ) {
-        // a) Month selector row
         item {
             MonthSelector(
                 selectedMonth = state.selectedMonth,
@@ -121,7 +155,6 @@ fun InsightsContent(
             )
         }
 
-        // b) Comparison card
         item {
             ComparisonCard(
                 comparison = state.comparison,
@@ -129,26 +162,18 @@ fun InsightsContent(
             )
         }
 
-        // c) TabRow
         item {
-            PrimaryTabRow(selectedTabIndex = selectedTabIndex) {
-                tabs.forEachIndexed { index, title ->
-                    Tab(
-                        selected = selectedTabIndex == index,
-                        onClick = { selectedTabIndex = index },
-                        text = { Text(title, fontWeight = FontWeight.SemiBold) }
-                    )
-                }
-            }
+            InsightsSegmentedTabs(
+                tabs = tabs,
+                selectedTabIndex = selectedTabIndex,
+                onTabSelected = { selectedTabIndex = it }
+            )
         }
 
-        // d) Tab contents / e) Empty states
         when (selectedTabIndex) {
             0 -> {
                 if (state.totalSpentPaise == 0L || state.slices.isEmpty()) {
-                    item {
-                        EmptySpendingCard(message = "No spending in this month")
-                    }
+                    item { EmptySpendingCard(message = "No spending recorded this month") }
                 } else {
                     item {
                         DonutChartSection(
@@ -161,9 +186,7 @@ fun InsightsContent(
             }
             1 -> {
                 if (state.totalSpentPaise == 0L) {
-                    item {
-                        EmptySpendingCard(message = "No spending in this month")
-                    }
+                    item { EmptySpendingCard(message = "No spending recorded this month") }
                 } else {
                     item {
                         DailyBarChartSection(
@@ -178,10 +201,56 @@ fun InsightsContent(
             }
             2 -> {
                 item {
+                    MonthlySummaryChartCard(summary = state.currentMonthSummary)
+                }
+                item {
                     MonthlyBarChartSection(
                         monthly = state.monthly,
                         selectedMonth = state.selectedMonth
                     )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun InsightsSegmentedTabs(
+    tabs: List<String>,
+    selectedTabIndex: Int,
+    onTabSelected: (Int) -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            tabs.forEachIndexed { index, title ->
+                val selected = selectedTabIndex == index
+                Surface(
+                    onClick = { onTabSelected(index) },
+                    modifier = Modifier
+                        .weight(1f)
+                        .defaultMinSize(minHeight = Dimens.minTouchTarget),
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (selected) MaterialTheme.colorScheme.surface else Color.Transparent,
+                    shadowElevation = if (selected) 1.dp else 0.dp
+                ) {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 8.dp)) {
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
+                        )
+                    }
                 }
             }
         }
@@ -194,18 +263,25 @@ fun ComparisonCard(
     totalSpentPaise: Long,
     modifier: Modifier = Modifier
 ) {
-    Card(
+    val creditColor = creditAmountColor()
+    AppCard(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+        containerColor = MaterialTheme.colorScheme.surface
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(Dimens.cardPadding)) {
             Text(
-                text = "Spent ${CurrencyUtils.formatRupees(totalSpentPaise)}",
-                style = MaterialTheme.typography.titleLarge,
+                text = "TOTAL SPEND",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Bold
             )
             Spacer(Modifier.height(4.dp))
+            Text(
+                text = CurrencyUtils.formatRupees(totalSpentPaise),
+                style = MoneyTypography.heroAmount,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(Modifier.height(Dimens.dp12))
 
             val periodText = if (comparison.mode == ComparisonMode.SAME_DAYS_LAST_MONTH) {
                 "same days last month"
@@ -214,41 +290,34 @@ fun ComparisonCard(
             }
 
             if (comparison.pct == null) {
-                Text(
-                    text = "No spending data for last month to compare",
-                    style = MaterialTheme.typography.bodyMedium,
+                StatusPill(
+                    label = "No prior month baseline",
+                    icon = Icons.Default.Info,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             } else {
                 val pct = comparison.pct
                 when {
                     pct > 0 -> {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = "▲ $pct% more than $periodText",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color(0xFFD32F2F)
-                            )
-                        }
+                        StatusPill(
+                            label = "$pct% higher vs $periodText",
+                            icon = Icons.Default.KeyboardArrowUp,
+                            color = MaterialTheme.colorScheme.error
+                        )
                     }
                     pct < 0 -> {
                         val absPct = -pct
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = "▼ $absPct% less than $periodText",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color(0xFF2E7D32)
-                            )
-                        }
+                        StatusPill(
+                            label = "$absPct% lower vs $periodText",
+                            icon = Icons.Default.KeyboardArrowDown,
+                            color = creditColor
+                        )
                     }
                     else -> {
-                        Text(
-                            text = "Same as $periodText",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        StatusPill(
+                            label = "Even with $periodText",
+                            icon = Icons.Default.CheckCircle,
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
@@ -268,31 +337,67 @@ fun DonutChartSection(
     val topSliceName = slices.firstOrNull()?.label ?: "None"
     val semanticsDesc = "Donut chart of spending by category. Total spent ${CurrencyUtils.formatRupees(totalSpentPaise)}. Top category: $topSliceName."
 
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp)
-    ) {
+    val sweepProgress by animateFloatAsState(
+        targetValue = 1f,
+        animationSpec = spring(stiffness = Spring.StiffnessLow),
+        label = "donutSweep"
+    )
+
+    AppCard(modifier = modifier.fillMaxWidth()) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(Dimens.cardPadding),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Donut Canvas with overlaid Text
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Spending Breakdown",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "${slices.size} group${if (slices.size != 1) "s" else ""}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Spacer(Modifier.height(Dimens.dp12))
+
             Box(
                 modifier = Modifier
-                    .size(240.dp)
+                    .size(224.dp)
                     .semantics { contentDescription = semanticsDesc },
                 contentAlignment = Alignment.Center
             ) {
-                Canvas(modifier = Modifier.fillMaxSize().padding(20.dp)) {
-                    val strokeWidthPx = 36.dp.toPx()
+                val trackColor = MaterialTheme.colorScheme.surfaceVariant
+                Canvas(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(18.dp)
+                ) {
+                    val strokeWidthPx = 30.dp.toPx()
                     val arcSize = Size(size.width - strokeWidthPx, size.height - strokeWidthPx)
                     val arcOffset = Offset(strokeWidthPx / 2f, strokeWidthPx / 2f)
+
+                    drawArc(
+                        color = trackColor,
+                        startAngle = -90f,
+                        sweepAngle = 360f,
+                        useCenter = false,
+                        topLeft = arcOffset,
+                        size = arcSize,
+                        style = Stroke(width = strokeWidthPx)
+                    )
 
                     if (slices.size == 1) {
                         drawArc(
                             color = ChartColors.getCategorySliceColor(0, slices[0].isMerged, isDark),
                             startAngle = -90f,
-                            sweepAngle = 360f,
+                            sweepAngle = 360f * sweepProgress,
                             useCenter = false,
                             topLeft = arcOffset,
                             size = arcSize,
@@ -301,7 +406,7 @@ fun DonutChartSection(
                     } else {
                         var startAngle = -90f
                         slices.forEachIndexed { index, slice ->
-                            val sweep = slice.fraction * 360f
+                            val sweep = slice.fraction * 360f * sweepProgress
                             drawArc(
                                 color = ChartColors.getCategorySliceColor(index, slice.isMerged, isDark),
                                 startAngle = startAngle,
@@ -316,29 +421,33 @@ fun DonutChartSection(
                     }
                 }
 
-                // Center overlaid text (NO drawText inside Canvas)
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = "Spent",
-                        style = MaterialTheme.typography.labelMedium,
+                        style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    Spacer(Modifier.height(2.dp))
                     Text(
-                        text = CurrencyUtils.formatRupees(totalSpentPaise),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        text = ChartCalculations.formatRupeesCompact(totalSpentPaise),
+                        style = MoneyTypography.cardAmount,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(Dimens.dp12))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f))
+            Spacer(Modifier.height(Dimens.dp8))
 
-            // Legend rows
             Column(modifier = Modifier.fillMaxWidth()) {
                 slices.forEachIndexed { index, slice ->
                     val color = ChartColors.getCategorySliceColor(index, slice.isMerged, isDark)
+                    val isClickable = slice.category != null
                     val clickableModifier = if (slice.category != null) {
-                        Modifier.clickable { onCategoryClick(slice.category) }
+                        Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { onCategoryClick(slice.category) }
                     } else {
                         Modifier
                     }
@@ -346,22 +455,42 @@ fun DonutChartSection(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(52.dp)
+                            .defaultMinSize(minHeight = 56.dp)
                             .then(clickableModifier)
-                            .padding(horizontal = 8.dp),
+                            .padding(horizontal = 6.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                            Box(
-                                modifier = Modifier
-                                    .size(16.dp)
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .background(color)
-                            )
-                            Spacer(Modifier.width(10.dp))
-                            Text(slice.emoji, style = MaterialTheme.typography.bodyLarge)
-                            Spacer(Modifier.width(6.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            if (slice.category != null) {
+                                CategoryIconBadge(
+                                    category = slice.category,
+                                    color = color,
+                                    size = 38.dp,
+                                    iconSize = 18.dp
+                                )
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .size(38.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(color.copy(alpha = 0.14f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.List,
+                                        contentDescription = null,
+                                        tint = color,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+
+                            Spacer(Modifier.width(12.dp))
+
                             Column {
                                 val labelText = if (slice.isMerged) {
                                     "${slice.label} (${slice.mergedCategoryCount})"
@@ -370,8 +499,10 @@ fun DonutChartSection(
                                 }
                                 Text(
                                     text = labelText,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.SemiBold
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                                 Text(
                                     text = "${slice.count} payment${if (slice.count != 1) "s" else ""}",
@@ -381,17 +512,27 @@ fun DonutChartSection(
                             }
                         }
 
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text(
-                                text = CurrencyUtils.formatRupees(slice.totalPaise),
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = slice.percentDisplay,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text(
+                                    text = CurrencyUtils.formatRupees(slice.totalPaise),
+                                    style = MoneyTypography.rowAmount
+                                )
+                                Text(
+                                    text = slice.percentDisplay,
+                                    style = MoneyTypography.captionNumber,
+                                    color = color
+                                )
+                            }
+                            if (isClickable) {
+                                Spacer(Modifier.width(4.dp))
+                                Icon(
+                                    imageVector = Icons.Default.KeyboardArrowRight,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -406,13 +547,13 @@ fun DailyBarChartSection(
     visibleDays: Int,
     highestDay: Int?,
     averageDailyPaise: Long,
-    month: java.time.YearMonth,
+    month: YearMonth,
     modifier: Modifier = Modifier
 ) {
     val isDark = isSystemInDarkTheme()
+    val avgLineColor = if (isDark) NearLimitDark else NearLimitLight
     var selectedDayIndex by rememberSaveable { mutableStateOf<Int?>(null) }
 
-    // Clear selection when month changes
     LaunchedEffect(month) {
         selectedDayIndex = null
     }
@@ -422,7 +563,7 @@ fun DailyBarChartSection(
 
     val highestDayLabel = highestDay?.let { day ->
         val dateStr = "$day ${month.month.name.take(3).lowercase().replaceFirstChar { it.uppercase() }}"
-        "Highest day: $dateStr, ${CurrencyUtils.formatRupees(dailySpend[day - 1])}"
+        "Peak: $dateStr (${CurrencyUtils.formatRupees(dailySpend[day - 1])})"
     }
 
     val selectedDayText = selectedDayIndex?.let { idx ->
@@ -430,49 +571,99 @@ fun DailyBarChartSection(
         val dateStr = "$day ${month.month.name.take(3).lowercase().replaceFirstChar { it.uppercase() }}"
         val amt = dailySpend[idx]
         if (amt > 0L) {
-            "$dateStr: ${CurrencyUtils.formatRupees(amt)}"
+            "$dateStr • ${CurrencyUtils.formatRupees(amt)}"
         } else {
-            "$dateStr: no spending"
+            "$dateStr • No spending"
         }
     }
 
     val semanticsDesc = "Daily spending bar chart for ${DateTimeUtils.formatMonthYear(month)}. " +
-            (highestDayLabel ?: "No spending recorded.")
+        (highestDayLabel ?: "No spending recorded.")
 
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp)
-    ) {
+    AppCard(modifier = modifier.fillMaxWidth()) {
         Column(
-            modifier = Modifier.padding(16.dp).semantics { contentDescription = semanticsDesc }
+            modifier = Modifier
+                .padding(Dimens.cardPadding)
+                .semantics { contentDescription = semanticsDesc }
         ) {
-            // Selected day text above chart
-            Text(
-                text = selectedDayText ?: "Tap a bar to see day's total",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = if (selectedDayText != null) FontWeight.Bold else FontWeight.Normal,
-                color = if (selectedDayText != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Daily Spend Velocity",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                if (highestDayLabel != null) {
+                    Text(
+                        text = highestDayLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (isDark) ChartColors.DAILY_HIGHEST_DARK else ChartColors.DAILY_HIGHEST_LIGHT,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(Dimens.dp8))
 
-            // Chart area: Y-axis labels + Canvas
-            Row(modifier = Modifier.fillMaxWidth().height(180.dp)) {
-                // Left axis labels (max, half, 0)
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = if (selectedDayText != null) {
+                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f)
+                }
+            ) {
+                Text(
+                    text = selectedDayText ?: "Tap any day bar to inspect exact total",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = if (selectedDayText != null) FontWeight.Bold else FontWeight.Medium,
+                    color = if (selectedDayText != null) {
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                )
+            }
+
+            Spacer(Modifier.height(Dimens.dp16))
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(184.dp)
+            ) {
                 Column(
-                    modifier = Modifier.fillMaxHeight().width(52.dp),
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(52.dp),
                     verticalArrangement = Arrangement.SpaceBetween,
                     horizontalAlignment = Alignment.End
                 ) {
-                    Text(ChartCalculations.formatRupeesCompact(axisMaxPaise), style = MaterialTheme.typography.labelSmall, fontSize = 10.sp)
-                    Text(ChartCalculations.formatRupeesCompact(axisMaxPaise / 2), style = MaterialTheme.typography.labelSmall, fontSize = 10.sp)
-                    Text(ChartCalculations.formatRupeesCompact(0L), style = MaterialTheme.typography.labelSmall, fontSize = 10.sp)
+                    Text(
+                        ChartCalculations.formatRupeesCompact(axisMaxPaise),
+                        style = MoneyTypography.captionNumber,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        ChartCalculations.formatRupeesCompact(axisMaxPaise / 2),
+                        style = MoneyTypography.captionNumber,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        ChartCalculations.formatRupeesCompact(0L),
+                        style = MoneyTypography.captionNumber,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
 
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(Dimens.dp8))
 
-                // Canvas area with tap detection
-                var canvasWidth by remember { mutableStateOf(0f) }
+                val outlineColor = MaterialTheme.colorScheme.outlineVariant
+                val selectedOutline = if (isDark) Color.White else MaterialTheme.colorScheme.onSurface
 
                 Canvas(
                     modifier = Modifier
@@ -485,21 +676,18 @@ fun DailyBarChartSection(
                             }
                         }
                 ) {
-                    canvasWidth = size.width
                     val w = size.width
                     val h = size.height
 
-                    // 3 horizontal grid lines (0, half, max)
-                    val gridColor = Color.Gray.copy(alpha = 0.25f)
+                    val gridColor = outlineColor.copy(alpha = 0.55f)
                     drawLine(gridColor, Offset(0f, 0f), Offset(w, 0f), strokeWidth = 1f)
                     drawLine(gridColor, Offset(0f, h / 2f), Offset(w, h / 2f), strokeWidth = 1f)
-                    drawLine(gridColor, Offset(0f, h), Offset(w, h), strokeWidth = 1f)
+                    drawLine(gridColor, Offset(0f, h), Offset(w, h), strokeWidth = 1.5f)
 
-                    // Dashed line at averageDailyPaise
                     if (averageDailyPaise > 0L && averageDailyPaise <= axisMaxPaise) {
                         val avgY = h - (averageDailyPaise.toFloat() / axisMaxPaise.toFloat()) * h
                         drawLine(
-                            color = Color(0xFFE69F00),
+                            color = avgLineColor,
                             start = Offset(0f, avgY),
                             end = Offset(w, avgY),
                             strokeWidth = 1.5.dp.toPx(),
@@ -507,11 +695,11 @@ fun DailyBarChartSection(
                         )
                     }
 
-                    // Draw bars
                     if (visibleDays > 0) {
                         val slotWidth = w / visibleDays
-                        val barPadding = (slotWidth * 0.2f).coerceAtLeast(1f)
-                        val barWidth = (slotWidth - barPadding * 2).coerceAtLeast(1f)
+                        val barPadding = (slotWidth * 0.22f).coerceAtLeast(1f)
+                        val barWidth = (slotWidth - barPadding * 2).coerceAtLeast(2f)
+                        val radius = CornerRadius(barWidth / 2f, barWidth / 2f)
 
                         for (i in 0 until visibleDays) {
                             val amount = dailySpend[i]
@@ -527,19 +715,25 @@ fun DailyBarChartSection(
                             }
 
                             if (barHeight > 0f) {
-                                drawRect(
-                                    color = barColor,
+                                drawRoundRect(
+                                    brush = Brush.verticalGradient(
+                                        colors = listOf(barColor, barColor.copy(alpha = 0.72f)),
+                                        startY = barTop,
+                                        endY = h
+                                    ),
                                     topLeft = Offset(barLeft, barTop),
-                                    size = Size(barWidth, barHeight)
+                                    size = Size(barWidth, barHeight),
+                                    cornerRadius = radius
                                 )
                             }
 
-                            // Selected outline
                             if (selectedDayIndex == i) {
-                                drawRect(
-                                    color = if (isDark) Color.White else Color.Black,
-                                    topLeft = Offset(barLeft - 1f, (h - barHeight).coerceAtLeast(0f) - 1f),
-                                    size = Size(barWidth + 2f, barHeight + 1f),
+                                val topY = (h - barHeight).coerceAtLeast(0f)
+                                drawRoundRect(
+                                    color = selectedOutline,
+                                    topLeft = Offset(barLeft - 1.5f, topY - 1.5f),
+                                    size = Size(barWidth + 3f, barHeight + 2f),
+                                    cornerRadius = radius,
                                     style = Stroke(width = 2.dp.toPx())
                                 )
                             }
@@ -548,8 +742,7 @@ fun DailyBarChartSection(
                 }
             }
 
-            // X-axis day labels below chart (days 1, 5, 10, 15, 20, 25, visibleDays)
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(6.dp))
             Row(modifier = Modifier.fillMaxWidth().padding(start = 60.dp)) {
                 Box(modifier = Modifier.fillMaxWidth()) {
                     val labelDays = listOf(1, 5, 10, 15, 20, 25, visibleDays)
@@ -563,15 +756,13 @@ fun DailyBarChartSection(
 
                     filteredLabels.forEach { day ->
                         val fraction = (day - 0.5f) / visibleDays.toFloat()
-                        // Position label with bias
                         Row(
                             modifier = Modifier.fillMaxWidth(fraction),
                             horizontalArrangement = Arrangement.End
                         ) {
                             Text(
                                 text = "$day",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontSize = 10.sp,
+                                style = MoneyTypography.captionNumber,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -579,29 +770,25 @@ fun DailyBarChartSection(
                 }
             }
 
-            Spacer(Modifier.height(10.dp))
-
-            // Average legend line & Highest day text
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (averageDailyPaise > 0L) {
-                    Text(
-                        text = "--- Average ${CurrencyUtils.formatRupees(averageDailyPaise)} / day",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xFFE69F00),
-                        fontWeight = FontWeight.SemiBold
+            if (averageDailyPaise > 0L) {
+                Spacer(Modifier.height(Dimens.dp12))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f))
+                Spacer(Modifier.height(Dimens.dp12))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .width(16.dp)
+                            .height(3.dp)
+                            .clip(CircleShape)
+                            .background(avgLineColor)
                     )
-                } else {
-                    Spacer(Modifier.width(1.dp))
-                }
-
-                if (highestDayLabel != null) {
                     Text(
-                        text = highestDayLabel,
-                        style = MaterialTheme.typography.labelSmall,
+                        text = "Daily average: ${CurrencyUtils.formatRupees(averageDailyPaise)} / day",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = avgLineColor,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -613,10 +800,12 @@ fun DailyBarChartSection(
 @Composable
 fun MonthlyBarChartSection(
     monthly: List<MonthTotals>,
-    selectedMonth: java.time.YearMonth,
+    selectedMonth: YearMonth,
     modifier: Modifier = Modifier
 ) {
     val isDark = isSystemInDarkTheme()
+    val spentColor = if (isDark) ChartColors.MONTHLY_SPENT_DARK else ChartColors.MONTHLY_SPENT_LIGHT
+    val receivedColor = if (isDark) ChartColors.MONTHLY_RECEIVED_DARK else ChartColors.MONTHLY_RECEIVED_LIGHT
     var selectedGroupIndex by rememberSaveable { mutableStateOf<Int?>(null) }
 
     val maxVal = monthly.maxOfOrNull { maxOf(it.spentPaise, it.receivedPaise) } ?: 0L
@@ -634,61 +823,100 @@ fun MonthlyBarChartSection(
         } else null
     }
 
-    val semanticsDesc = "Monthly totals bar chart showing ${monthly.size} months. " +
-            (selectedGroupText ?: "")
+    val semanticsDesc = "Monthly totals bar chart showing ${monthly.size} months. " + (selectedGroupText ?: "")
 
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp)
-    ) {
+    AppCard(modifier = modifier.fillMaxWidth()) {
         Column(
-            modifier = Modifier.padding(16.dp).semantics { contentDescription = semanticsDesc }
+            modifier = Modifier
+                .padding(Dimens.cardPadding)
+                .semantics { contentDescription = semanticsDesc }
         ) {
-            // Legend row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.size(12.dp).clip(RoundedCornerShape(2.dp)).background(if (isDark) ChartColors.MONTHLY_SPENT_DARK else ChartColors.MONTHLY_SPENT_LIGHT))
-                    Spacer(Modifier.width(4.dp))
-                    Text("Spent", style = MaterialTheme.typography.labelMedium)
-                    Spacer(Modifier.width(16.dp))
-                    Box(modifier = Modifier.size(12.dp).clip(RoundedCornerShape(2.dp)).background(if (isDark) ChartColors.MONTHLY_RECEIVED_DARK else ChartColors.MONTHLY_RECEIVED_LIGHT))
-                    Spacer(Modifier.width(4.dp))
-                    Text("Received", style = MaterialTheme.typography.labelMedium)
+                Text(
+                    text = "6-Month Trend",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        LegendSwatch(color = spentColor)
+                        Spacer(Modifier.width(6.dp))
+                        Text("Spent", style = MaterialTheme.typography.labelSmall)
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        LegendSwatch(color = receivedColor)
+                        Spacer(Modifier.width(6.dp))
+                        Text("Received", style = MaterialTheme.typography.labelSmall)
+                    }
                 }
             }
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(Dimens.dp8))
 
-            // Selected group exact text
-            Text(
-                text = selectedGroupText ?: "Tap a month group to view details",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = if (selectedGroupText != null) FontWeight.Bold else FontWeight.Normal,
-                color = if (selectedGroupText != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = if (selectedGroupText != null) {
+                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f)
+                }
+            ) {
+                Text(
+                    text = selectedGroupText ?: "Tap any month pair to inspect totals",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = if (selectedGroupText != null) FontWeight.Bold else FontWeight.Medium,
+                    color = if (selectedGroupText != null) {
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                )
+            }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(Dimens.dp16))
 
-            // Chart area
-            Row(modifier = Modifier.fillMaxWidth().height(180.dp)) {
-                // Left axis labels
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(180.dp)
+            ) {
                 Column(
-                    modifier = Modifier.fillMaxHeight().width(52.dp),
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(52.dp),
                     verticalArrangement = Arrangement.SpaceBetween,
                     horizontalAlignment = Alignment.End
                 ) {
-                    Text(ChartCalculations.formatRupeesCompact(axisMaxPaise), style = MaterialTheme.typography.labelSmall, fontSize = 10.sp)
-                    Text(ChartCalculations.formatRupeesCompact(axisMaxPaise / 2), style = MaterialTheme.typography.labelSmall, fontSize = 10.sp)
-                    Text(ChartCalculations.formatRupeesCompact(0L), style = MaterialTheme.typography.labelSmall, fontSize = 10.sp)
+                    Text(
+                        ChartCalculations.formatRupeesCompact(axisMaxPaise),
+                        style = MoneyTypography.captionNumber,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        ChartCalculations.formatRupeesCompact(axisMaxPaise / 2),
+                        style = MoneyTypography.captionNumber,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        ChartCalculations.formatRupeesCompact(0L),
+                        style = MoneyTypography.captionNumber,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
 
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(Dimens.dp8))
 
-                // Canvas
+                val outlineColor = MaterialTheme.colorScheme.outlineVariant
+                val selectedOutline = if (isDark) Color.White else MaterialTheme.colorScheme.onSurface
+
                 Canvas(
                     modifier = Modifier
                         .weight(1f)
@@ -703,51 +931,59 @@ fun MonthlyBarChartSection(
                     val w = size.width
                     val h = size.height
 
-                    // 3 horizontal grid lines
-                    val gridColor = Color.Gray.copy(alpha = 0.25f)
+                    val gridColor = outlineColor.copy(alpha = 0.55f)
                     drawLine(gridColor, Offset(0f, 0f), Offset(w, 0f), strokeWidth = 1f)
                     drawLine(gridColor, Offset(0f, h / 2f), Offset(w, h / 2f), strokeWidth = 1f)
-                    drawLine(gridColor, Offset(0f, h), Offset(w, h), strokeWidth = 1f)
+                    drawLine(gridColor, Offset(0f, h), Offset(w, h), strokeWidth = 1.5f)
 
                     if (monthly.isNotEmpty()) {
                         val groupWidth = w / monthly.size
-                        val barWidth = (groupWidth * 0.35f).coerceAtLeast(2f)
+                        val barWidth = (groupWidth * 0.34f).coerceAtLeast(4f).coerceAtMost(24.dp.toPx())
+                        val radius = CornerRadius(barWidth / 2f, barWidth / 2f)
 
                         monthly.forEachIndexed { i, item ->
                             val groupCenterX = i * groupWidth + groupWidth / 2f
                             val spentH = (item.spentPaise.toFloat() / axisMaxPaise.toFloat()) * h
                             val recH = (item.receivedPaise.toFloat() / axisMaxPaise.toFloat()) * h
 
-                            val spentLeft = groupCenterX - barWidth - 1f
-                            val recLeft = groupCenterX + 1f
+                            val spentLeft = groupCenterX - barWidth - 2f
+                            val recLeft = groupCenterX + 2f
 
-                            // Spent bar
                             if (spentH > 0f) {
-                                drawRect(
-                                    color = if (isDark) ChartColors.MONTHLY_SPENT_DARK else ChartColors.MONTHLY_SPENT_LIGHT,
+                                drawRoundRect(
+                                    brush = Brush.verticalGradient(
+                                        colors = listOf(spentColor, spentColor.copy(alpha = 0.72f)),
+                                        startY = h - spentH,
+                                        endY = h
+                                    ),
                                     topLeft = Offset(spentLeft, h - spentH),
-                                    size = Size(barWidth, spentH)
+                                    size = Size(barWidth, spentH),
+                                    cornerRadius = radius
                                 )
                             }
 
-                            // Received bar
                             if (recH > 0f) {
-                                drawRect(
-                                    color = if (isDark) ChartColors.MONTHLY_RECEIVED_DARK else ChartColors.MONTHLY_RECEIVED_LIGHT,
+                                drawRoundRect(
+                                    brush = Brush.verticalGradient(
+                                        colors = listOf(receivedColor, receivedColor.copy(alpha = 0.72f)),
+                                        startY = h - recH,
+                                        endY = h
+                                    ),
                                     topLeft = Offset(recLeft, h - recH),
-                                    size = Size(barWidth, recH)
+                                    size = Size(barWidth, recH),
+                                    cornerRadius = radius
                                 )
                             }
 
-                            // Outline if selected
                             if (selectedGroupIndex == i) {
                                 val groupLeft = i * groupWidth + 2f
                                 val groupW = groupWidth - 4f
                                 val highestH = maxOf(spentH, recH).coerceAtLeast(10f)
-                                drawRect(
-                                    color = if (isDark) Color.White else Color.Black,
+                                drawRoundRect(
+                                    color = selectedOutline,
                                     topLeft = Offset(groupLeft, h - highestH - 4f),
                                     size = Size(groupW, highestH + 4f),
+                                    cornerRadius = CornerRadius(8.dp.toPx(), 8.dp.toPx()),
                                     style = Stroke(width = 2.dp.toPx())
                                 )
                             }
@@ -756,10 +992,11 @@ fun MonthlyBarChartSection(
                 }
             }
 
-            // Month labels under groups
             Spacer(Modifier.height(6.dp))
             Row(
-                modifier = Modifier.fillMaxWidth().padding(start = 60.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 60.dp),
                 horizontalArrangement = Arrangement.SpaceAround
             ) {
                 monthly.forEach { item ->
@@ -767,7 +1004,7 @@ fun MonthlyBarChartSection(
                     Text(
                         text = item.month.format(monthFormatter),
                         style = MaterialTheme.typography.labelSmall,
-                        fontWeight = if (isCurrentSelected) FontWeight.ExtraBold else FontWeight.Normal,
+                        fontWeight = if (isCurrentSelected) FontWeight.Bold else FontWeight.Medium,
                         color = if (isCurrentSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -776,7 +1013,7 @@ fun MonthlyBarChartSection(
             if (monthly.size == 1) {
                 Spacer(Modifier.height(10.dp))
                 Text(
-                    text = "More months will appear as data grows",
+                    text = "More months will appear automatically as your history grows.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -790,21 +1027,10 @@ fun EmptySpendingCard(
     message: String,
     modifier: Modifier = Modifier
 ) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-    ) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(message, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(6.dp))
-            Text(
-                "Use the month selector above to view other months.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
+    EmptyState(
+        icon = Icons.Default.DateRange,
+        title = message,
+        hint = "Use the month selector above to browse other months.",
+        modifier = modifier
+    )
 }

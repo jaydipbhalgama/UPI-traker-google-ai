@@ -4,41 +4,39 @@ import androidx.compose.ui.graphics.Color
 
 object ChartColors {
 
-    // Palette (7 colours, light theme)
-    // #0072B2, #E69F00, #009E73, #CC79A7, #D55E00, #56B4E9, and #6B7280 for "Smaller categories"
+    // Palette (7 colours, light theme — colorblind-distinguishable & harmonized with fintech palette)
     val LIGHT_PALETTE: List<Color> = listOf(
-        Color(0xFF0072B2),
-        Color(0xFFE69F00),
-        Color(0xFF009E73),
-        Color(0xFFCC79A7),
-        Color(0xFFD55E00),
-        Color(0xFF56B4E9),
-        Color(0xFF6B7280) // Smaller categories
+        Color(0xFF0B6E4F), // Emerald
+        Color(0xFF2563EB), // Cobalt
+        Color(0xFFD97706), // Amber
+        Color(0xFF7C3AED), // Violet
+        Color(0xFFDC2626), // Crimson
+        Color(0xFF0891B2), // Cyan
+        Color(0xFF64748B)  // Smaller categories (Slate)
     )
 
     // Dark theme variants
-    // #5DADE2, #F5B041, #48C9B0, #E8A0C8, #F08A5D, #85C1E9, #9CA3AF
     val DARK_PALETTE: List<Color> = listOf(
-        Color(0xFF5DADE2),
-        Color(0xFFF5B041),
-        Color(0xFF48C9B0),
-        Color(0xFFE8A0C8),
-        Color(0xFFF08A5D),
-        Color(0xFF85C1E9),
-        Color(0xFF9CA3AF) // Smaller categories
+        Color(0xFF34D399), // Electric Mint
+        Color(0xFF60A5FA), // Sky Blue
+        Color(0xFFFBBF24), // Amber Gold
+        Color(0xFFA78BFA), // Lavender
+        Color(0xFFF87171), // Coral Red
+        Color(0xFF22D3EE), // Aqua
+        Color(0xFF94A3B8)  // Smaller categories (Cool Slate)
     )
 
     // Daily bar chart colors
-    val DAILY_BAR_LIGHT = Color(0xFF0072B2)
-    val DAILY_BAR_DARK = Color(0xFF5DADE2)
-    val DAILY_HIGHEST_LIGHT = Color(0xFFD55E00)
-    val DAILY_HIGHEST_DARK = Color(0xFFF08A5D)
+    val DAILY_BAR_LIGHT = Color(0xFF2563EB)
+    val DAILY_BAR_DARK = Color(0xFF60A5FA)
+    val DAILY_HIGHEST_LIGHT = Color(0xFFDC2626)
+    val DAILY_HIGHEST_DARK = Color(0xFFF87171)
 
     // Monthly chart colors
-    val MONTHLY_SPENT_LIGHT = Color(0xFFD55E00)
-    val MONTHLY_SPENT_DARK = Color(0xFFF08A5D)
-    val MONTHLY_RECEIVED_LIGHT = Color(0xFF009E73)
-    val MONTHLY_RECEIVED_DARK = Color(0xFF48C9B0)
+    val MONTHLY_SPENT_LIGHT = Color(0xFFDC2626)
+    val MONTHLY_SPENT_DARK = Color(0xFFF87171)
+    val MONTHLY_RECEIVED_LIGHT = Color(0xFF0B6E4F)
+    val MONTHLY_RECEIVED_DARK = Color(0xFF34D399)
 
     fun getCategorySliceColor(index: Int, isMerged: Boolean, isDark: Boolean): Color {
         val palette = if (isDark) DARK_PALETTE else LIGHT_PALETTE
