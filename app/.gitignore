@@ -1,0 +1,17 @@
+# Android build outputs
+**/build/
+
+# IDE and local configuration
+.idea/
+*.iml
+local.properties
+
+# Sensitive signing files
+*.jks
+*.keystore
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+.idea/
